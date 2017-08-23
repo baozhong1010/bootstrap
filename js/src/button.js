@@ -5,7 +5,11 @@
  * --------------------------------------------------------------------------
  */
 
-const Button = (($) => {
+import Data from './dom/data'
+import EventHandler from './dom/eventHandler'
+import SelectorEngine from './dom/selectorEngine'
+
+const Button = (() => {
 
 
   /**
@@ -67,14 +71,13 @@ const Button = (($) => {
     toggle() {
       let triggerChangeEvent = true
       let addAriaPressed = true
-      // we need to polyfill `closest`
-      // https://caniuse.com/#feat=element-closest
-      const rootElement = this._element.closest(
+      const rootElement = SelectorEngine.closest(
+        this._element,
         Selector.DATA_TOGGLE
       )
 
       if (rootElement) {
-        const input = this._element.querySelector(Selector.INPUT)
+        const input = SelectorEngine.find(this._element, Selector.INPUT)
 
         if (input) {
           if (input.type === 'radio') {
@@ -83,7 +86,7 @@ const Button = (($) => {
               triggerChangeEvent = false
 
             } else {
-              const activeElement = rootElement.querySelector(Selector.ACTIVE)
+              const activeElement = SelectorEngine.find(rootElement, Selector.ACTIVE)
 
               if (activeElement) {
                 activeElement.classList.remove(ClassName.ACTIVE)
@@ -99,7 +102,7 @@ const Button = (($) => {
               return
             }
             input.checked = !this._element.classList.contains(ClassName.ACTIVE)
-            $(input).trigger('change')
+            EventHandler.trigger(input, 'change')
           }
 
           input.focus()
@@ -119,7 +122,7 @@ const Button = (($) => {
     }
 
     dispose() {
-      this._element.removeAttribute(DATA_KEY)
+      Data.removeData(this._element, DATA_KEY)
       this._element = null
     }
 
@@ -127,12 +130,12 @@ const Button = (($) => {
     // static
 
     static _jQueryInterface(config) {
-      return this.each(function () {
-        let data = $(this).data(DATA_KEY)
+      return Array.prototype.forEach.call(this, function () {
+        let data = Data.getData(this, DATA_KEY)
 
         if (!data) {
           data = new Button(this)
-          $(this).data(DATA_KEY, data)
+          Data.setData(this, DATA_KEY, data)
         }
 
         if (config === 'toggle') {
@@ -150,21 +153,24 @@ const Button = (($) => {
    * ------------------------------------------------------------------------
    */
 
-  $(document)
-    .on(Event.CLICK_DATA_API, Selector.DATA_TOGGLE_CARROT, (event) => {
+  EventHandler.on(document,
+    Event.CLICK_DATA_API,
+    Selector.DATA_TOGGLE_CARROT, (event) => {
       event.preventDefault()
 
       let button = event.target
 
-      if (!$(button).hasClass(ClassName.BUTTON)) {
-        button = $(button).closest(Selector.BUTTON)
+      if (!button.classList.contains(ClassName.BUTTON)) {
+        button = SelectorEngine.closest(button, Selector.BUTTON)
       }
 
-      Button._jQueryInterface.call($(button), 'toggle')
+      Button._jQueryInterface.call(button, 'toggle')
     })
-    .on(Event.FOCUS_BLUR_DATA_API, Selector.DATA_TOGGLE_CARROT, (event) => {
-      const button = $(event.target).closest(Selector.BUTTON)[0]
-      $(button).toggleClass(ClassName.FOCUS, /^focus(in)?$/.test(event.type))
+
+  EventHandler.on(document,
+    Event.FOCUS_BLUR_DATA_API, Selector.DATA_TOGGLE_CARROT, (event) => {
+      const button = SelectorEngine.closest(event.target, Selector.BUTTON)[0]
+      button.classList.toggle(ClassName.FOCUS, /^focus(in)?$/.test(event.type))
     })
 
 
@@ -172,17 +178,19 @@ const Button = (($) => {
    * ------------------------------------------------------------------------
    * jQuery
    * ------------------------------------------------------------------------
+   * add .button to jQuery only if jQuery is present
    */
-
-  $.fn[NAME]             = Button._jQueryInterface
-  $.fn[NAME].Constructor = Button
-  $.fn[NAME].noConflict  = function () {
-    $.fn[NAME] = JQUERY_NO_CONFLICT
-    return Button._jQueryInterface
+  if (typeof window.$ !== 'undefined' || typeof window.jQuery !== 'undefined') {
+    $.fn[NAME]             = Button._jQueryInterface
+    $.fn[NAME].Constructor = Button
+    $.fn[NAME].noConflict  = function () {
+      $.fn[NAME] = JQUERY_NO_CONFLICT
+      return Button._jQueryInterface
+    }
   }
 
   return Button
 
-})(jQuery)
+})()
 
 export default Button
